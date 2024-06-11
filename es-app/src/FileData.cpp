@@ -683,6 +683,20 @@ bool FileData::launchGame(Window* window, LaunchGameOptions options)
 	window->deinit(hideWindow);
 	
 	const std::string rom = Utils::FileSystem::getEscapedPath(getPath());
+
+	// For the special case where a directory has a supported file extension and is therefore
+	// interpreted as a file, check if there is a matching filename inside the directory.
+	// This is used as a shortcut to be able to launch games directly inside folders.
+	if (mType == GAME && Utils::FileSystem::isDirectory(getPath())) {
+		for (std::string& file : Utils::FileSystem::getDirContent(getPath())) {
+			if (Utils::FileSystem::getFileName(file) == Utils::FileSystem::getFileName(getPath()) &&
+			   (Utils::FileSystem::isRegularFile(file) || Utils::FileSystem::isSymlink(file))) {
+				rom = Utils::FileSystem::getEscapedPath(file);
+	                	break;
+			}
+		}
+	}
+
 	const std::string basename = Utils::FileSystem::getStem(getPath());
 
 	Scripting::fireEvent("game-start", rom, basename, getName());
