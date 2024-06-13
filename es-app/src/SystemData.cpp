@@ -281,6 +281,33 @@ void SystemData::populateFolder(FolderData* folder, std::unordered_map<std::stri
 				fileMap[filePath] = newGame;
 				isGame = true;
 			}
+
+			// if it's a folder and it contains a gamefolder.xml file,
+			// parse it for its metadata
+			if (Utils::FileSystem::isDirectory(filePath)) {
+				string xmlpath = filePath+"/gamefolder.xml";
+				if (Utils::FileSystem::exists(xmlpath)) {
+					LOG(LogInfo) << "Parsing XML file \"" << xmlpath << "\"...";
+					pugi::xml_document doc;
+					pugi::xml_parse_result result = fromFile ? doc.load_file(WINSTRINGW(xmlpath).c_str()) : doc.load_string(xmlpath.c_str());
+					if (!result)
+					{
+						LOG(LogError) << "Error parsing XML file \"" << xmlpath << "\"!\n	" << result.description();
+					} else {
+						pugi::xml_node root = doc.child("game");
+						if (!root)
+						{
+							LOG(LogError) << "Could not find <game> node in gamefolder.xml \"" << xmlpath << "\"!";
+						} else {
+							newGame->metadata.loadFromXML(GAME_METADATA, root, system);
+						}
+					}
+				} else {
+					// Remove the extension from the directory name metadata
+					const std::string folderName = newGame->metadata.get("name");
+					newGame->metadata.set(MetaDataId::Name, folderName.substr(0, folderName.length() - extension.length()));
+				}
+			}
 		}
 
 		//add directories that also do not match an extension as folders
